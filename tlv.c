@@ -1,5 +1,8 @@
 #include "tlv.h"
-
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 static unsigned char bhex[] = "0123456789ABCDEF";
 
 static unsigned int hexb[] = {
@@ -50,9 +53,9 @@ void dump(const char *format, ...) {
 
     va_start(args, format);
     memset(buf, 0, sizeof(buf));
-    _vsnprintf(buf, sizeof(buf), format, args);
+    vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
-    fprintf(stderr, "%s\n", buf);
+    fprintf(stdout, "%s\n", buf);
 }
 
 void dump_hex(unsigned char *data, int data_len, const char *format, ...) {
@@ -62,7 +65,7 @@ void dump_hex(unsigned char *data, int data_len, const char *format, ...) {
 
     va_start(args, format);
     memset(buf, 0, sizeof(buf));
-    _vsnprintf((char *)buf, sizeof(buf), format, args);
+    vsnprintf((char *)buf, sizeof(buf), format, args);
     va_end(args);
     fprintf(stderr, "%s", buf);
 
@@ -168,7 +171,7 @@ int tlv_parse(unsigned char *data, unsigned int data_len, tag_array_t *arr) {
 }
 
 
-
+/*
 int tlv_tag_to_value(unsigned char *data, unsigned int data_len, const tag_array_t *arr, unsigned char buf[MAX_DATA_ARRAY_SIZE]) {
     unsigned int offset = 0, t, l;
     //unsigned char *v;
@@ -217,4 +220,4 @@ int tlv_tag_to_value(unsigned char *data, unsigned int data_len, const tag_array
     }
 
     return buf_offset;
-}
+} */

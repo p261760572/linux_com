@@ -45,7 +45,6 @@ enum comm_parity_t
 #define COMM_PURGE_TXCLEAR			0x0004	
 #define COMM_PURGE_RXCLEAR			0x0008	
 
-
 #define dprintfbin(buf, size) 					\
 	do {											\
 		int i; 										\
@@ -68,6 +67,8 @@ enum comm_parity_t
 static int fd_com = -1;
 char *DEV_COM = NULL;
 
+int mis_pack(char *packet_type, char *buf);
+int mis_unpack(unsigned char *data);
 
 int CommOpen(void)
 {	
@@ -471,22 +472,21 @@ usage:
 				printf("%c", pdata[index]);
 			}
 			printf("\n---------data end-----------\n");
+			mis_unpack((unsigned char *)pdata);
 		}
 	}
 	if(0 == strcmp(argv[2], "write")){
-		char *pdata = malloc(1024);
-		int num = argc - 3;
-		int i;
-		int ret;
-
-		for(i = 0; i < num; i++)
-			pdata[i] = (char)strtoul(argv[3 + i], NULL, 16);
+		char *type = argv[3];
+		char pack_buf[512];
+		int len, ret;
+		
+		len = mis_pack(type, pack_buf);
 
 		//while(1) {
-			ret = CommWrite(pdata, num);
+			ret = CommWrite(pack_buf, len);
 			printf("finish writing!\n");
-			if(ret != num)
-				printf("warning: we want write %d char, only write %d char\n", num, ret);
+			if(ret != len)
+				printf("warning: we want write %d char, only write %d char\n", len, ret);
 			//dprintfbin(pdata, MAX(ret, num));
 			//sleep(1);
 			usleep(1);

@@ -5,7 +5,7 @@
 #define TIMEOUT 20000
 #define TAG_LEN 2
 #define LEN_LEN 3
-
+#define MAX_DATA_ARRAY_SIZE 1024
 struct tag_def_s {
     unsigned char *tag;
     unsigned int length;
@@ -33,7 +33,5 @@ int tag_array_append(tag_array_t *arr, unsigned char *tag, unsigned int length, 
 const tag_def_t *tag_array_get(const tag_array_t *arr, unsigned char *tag);
 
 int tlv_parse(unsigned char *data, unsigned int data_len, tag_array_t *arr);
-
-int tlv_tag_to_value(unsigned char *data, unsigned int data_len, const tag_array_t *arr, unsigned char buf[MAX_DATA_ARRAY_SIZE]);
 
 #endif

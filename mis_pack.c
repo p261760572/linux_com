@@ -9,19 +9,31 @@
 #define PATH	0x03
 #define ETX		0x03
 
-int mis_pack(char *body_set, char *next, char *next_node, char *packet_type, char *buf)
+extern field_data fld_data[512];
+extern int fld_num, gs_offset;
+extern char gs_buffer[64*1024];
+
+extern Packet_Def trans_set[100];
+
+extern int g_seq;
+extern char g_tag[2];
+
+int mis_pack(char *packet_type, char *buf)
 {
-		 char headbuf[512],bodybuf[512],tmp[512],*p,*p1,next_set[1024],bd_set[1024];
-		 int n,bodylen;
-		// ≥‰ µheadbuf
-		 p1=headbuf;
-		 headlen=0;
-		 strcpy(bd_set,body_set);
-		 strcpy(next_set,next);
+		 char bodybuf[512],tmp[512],*p,*p1,next_set[1024],bd_set[1024];
+		 int n,bodylen,i;
+		 
+		 for(i=0; trans_set[i].type && trans_set[i].type[0]; i++) {
+		 		if(strcmp(trans_set[i].type, packet_type) == 0) {
+		 				strncpy(bd_set, trans_set[i].Packet_Set[0].set, sizeof(bd_set));
+		 				strncpy(next_set, trans_set[i].Packet_Set[1].set, sizeof(next_set));
+		 				break;
+		 		}	
+		 }
 		 
 		 bodylen=0;
 		 p1=bodybuf;
-		 dcs_log(0,0,"<%s> body_set=[%s]",__FUNCTION__,bd_set);
+	//	 dcs_log(0,0,"<%s> body_set=[%s]",__FUNCTION__,bd_set);
 		 for(p=strtok(bd_set, ",");p;p=strtok( NULL,","))
 		 {
 			 	 n=get_field(p,packet_type,tmp);
@@ -34,12 +46,12 @@ int mis_pack(char *body_set, char *next, char *next_node, char *packet_type, cha
 			 	 }
 			 	 else if ( n == 0) continue;
 			 	 else return -1;
-			 	 dcs_log(0,0,"<%s>order[%s]=[%s]",__FUNCTION__,p,tmp);
+	//		 	 dcs_log(0,0,"<%s>order[%s]=[%s]",__FUNCTION__,p,tmp);
 			 	 
 		 }
 		 
-		 memcpy(g_tag, "%s", packet_type);
-		 sprintf(buf,"%c%d%c%c%06d%s%c", STX, n, PATH, TYPE, seq++, bodybuf,ETX);
+		 memcpy(g_tag, packet_type, sizeof(g_tag));
+		 sprintf(buf,"%c%d%c%c%06d%s%c", STX, n, PATH, TYPE, g_seq++, bodybuf,ETX);
 		 
 		 return bodylen+2+11;
 }

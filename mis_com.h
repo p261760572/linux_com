@@ -19,13 +19,4 @@ typedef struct {
 } Packet_Def;
 
 
-field_data fld_data[512];
-int fld_num=0, gs_offset=0;
-char gs_buffer[64*1024];
-
-Packet_Def trans_set[100];
-
-int g_seq = 1;
-char g_tag[2] = "";
-
 #endif

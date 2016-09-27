@@ -1,4 +1,16 @@
+#include <stdio.h>
+#include <string.h>
 #include "mis_com.h"
+
+
+field_data fld_data[512];
+int fld_num=0, gs_offset=0;
+char gs_buffer[64*1024];
+
+Packet_Def trans_set[100];
+
+int g_seq = 1;
+char g_tag[2] = "";
 
 void rtrim( char * str)
 {
@@ -81,7 +93,7 @@ int load_trans_field( char * filename )
 			if( strncmp(head,"field",5)!=0) continue;
 			rtrim(data);
 			add_field(strlen(data),data,field_name,type);
-			dcs_log(0,0,"<%s> %s=[%s], type[%s]",__FUNCTION__,field_name,data,type);
+		//	dcs_log(0,0,"<%s> %s=[%s], type[%s]",__FUNCTION__,field_name,data,type);
 	}
 	fclose(fp);
 	return 1;
@@ -111,8 +123,8 @@ int load_trans_set(char * filename )
 			
 			if( !head[0] || strcmp(head,"trans")!=0) continue;
 			rtrim(trans_set[i].Packet_Set[0].set);
-			dcs_log(0,0,"<%s> [%d]trans_type=[%s],set=[%s]",__FUNCTION__,i,
-							trans_set[i].Packet_Set[0].trans_type,trans_set[i].Packet_Set[0].set);
+		//	dcs_log(0,0,"<%s> [%d]trans_type=[%s],set=[%s]",__FUNCTION__,i,
+					//		trans_set[i].Packet_Set[0].trans_type,trans_set[i].Packet_Set[0].set);
 			
 			if(NULL==fgets(buf,sizeof(buf),fp)) continue;
 			if( buf[strlen(buf)-1]==0x0D ||buf[strlen(buf)-1]==0x0A)
@@ -122,12 +134,12 @@ int load_trans_set(char * filename )
 							trans_set[i].type, trans_set[i].Packet_Set[1].set);
 			if( !head[0] || strcmp(head,"trans")!=0)
 			{
-					dcs_log(0, 0, "≈‰÷√¥ÌŒÛ");
+				//	dcs_log(0, 0, "≈‰÷√¥ÌŒÛ");
 					return -1;
 			}
 			rtrim(trans_set[i].Packet_Set[1].set);
-			dcs_log(0,0,"<%s> [%d]trans_type=[%s],set=[%s]",__FUNCTION__,i,
-							trans_set[i].Packet_Set[1].trans_type,trans_set[i].Packet_Set[1].set);
+		//	dcs_log(0,0,"<%s> [%d]trans_type=[%s],set=[%s]",__FUNCTION__,i,
+		//					trans_set[i].Packet_Set[1].trans_type,trans_set[i].Packet_Set[1].set);
 			
 			i++;
 	}	
