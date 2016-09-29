@@ -14,11 +14,13 @@ int mis_unpack(unsigned char *data)
 		tag_array_init(&arr);
 		
 		tlv_parse(data+11, data_len, &arr);
-		const tag_def_t *tag_39 = tag_array_get(&arr, "39");
+		const tag_def_t *tag_39 = tag_array_get(&arr, (unsigned char *)"39");
     if(tag_39 && tag_39->length > 0) {
-        
+        if(memcmp(tag_39->value, "00", 2) == 0) {
+        		return 1;
+        }
     }
     
     tag_array_destroy(&arr);
-		return 1;
+		return 0;
 }

@@ -54,9 +54,9 @@ enum comm_parity_t
 					printf("\n");					\
 				printf("0x%04x: ", i); 			\
 			}										\
-			printf("%02x ", ((char*)buf)[i]);		\
+			printf("%02x ", ((unsigned char*)buf)[i]);		\
 		}											\
-		printf("%02x\n", ((char*)buf)[i]); 			\
+		printf("%02x\n", ((unsigned char*)buf)[i]); 			\
 	} while(0)
 
 #define MAX(a, b)		(a > b? a: b)
@@ -69,7 +69,11 @@ char *DEV_COM = NULL;
 
 int mis_pack(char *packet_type, char *buf);
 int mis_unpack(unsigned char *data);
+int load_trans_field( char * filename );
+int load_trans_set(char * filename );
+int get_command_next( char *packet_type, char * next);
 
+extern char g_tag[2];
 int CommOpen(void)
 {	
 	if (fd_com < 0)
@@ -92,9 +96,7 @@ int CommDestory(void)
 
 	if(fd_com > 0)
 	{
-		printf("close start!\n");
 		ret = close(fd_com);
-		printf("close end!\n");
 		fd_com = -1;		
 	}
 
@@ -246,7 +248,6 @@ int SetAttribute(COMM_ATTR *pattr)
 			LIBDVR_PRINT("unsupported baudrate %d\n", attr->baudrate);
 			break;
 	}
-
 	
 	switch (attr->parity)
 	{
@@ -333,11 +334,11 @@ int GetAttribute(void)
 	tcgetattr(dev_fd, &opt);
 	cfmakeraw(&opt);			
 
-	printf("cfgetospeed(&opt): %d\n", cfgetospeed(&opt));
-	printf("cfgetispeed(&opt): %d\n", cfgetispeed(&opt));
+	//printf("cfgetospeed(&opt): %d\n", cfgetospeed(&opt));
+	//printf("cfgetispeed(&opt): %d\n", cfgetispeed(&opt));
 
 
-	printf("B2400 is %d, B115200 is %d, c_oflag is 0x%x\n", B2400, B115200, opt.c_oflag);
+	//printf("B2400 is %d, B115200 is %d, c_oflag is 0x%x\n", B2400, B115200, opt.c_oflag);
 
 
 
@@ -357,7 +358,7 @@ int CommRead(void *pdata, DWORD nbytes)
 			return -1;
 		}		
 	}
-	//printf("start to read!\n");
+	printf("read: len=%d\ndata=%s\n", nbytes, (char *)pdata);
 	return read(fd_com, pdata, nbytes);
 }
 
@@ -374,7 +375,7 @@ int CommWrite(void *pdata, DWORD len)
 		}		
 	}
 	
-	printf("start to write!\n");
+	printf("write:len=%d\ndata=%s\n", len, (char *)pdata);
 	return write(fd_com, pdata, len);
 }
 
@@ -415,6 +416,8 @@ int CommPurge(DWORD dw_flags)
 
 int main(int argc, char *argv[])
 {
+	char pack_buf[512], next[3];
+	int len;
 	printf("version: %s %s\n", __DATE__, __TIME__);
 	if(argc < 4) {
 usage:
@@ -447,7 +450,8 @@ usage:
 		printf("set com attr failed\n");
 		
 	GetAttribute();
-
+	if(!load_trans_set("./mis_com.conf")) return -1;
+	if(!load_trans_field("./mis_com.conf")) return -1;
 	if(0 == strcmp(argv[2], "read")){
 		int num = atoi(argv[3]);
 		if(num <= 0 || num > 1000) {
@@ -459,38 +463,34 @@ usage:
 		int ret;
 		while(1)
 		{
-			int index = 0;
-			ret = CommRead(pdata, num);
-			//printf("finish Reading!\n");
-			//if(ret != num)
-				//printf("warning: we want read %d char, only read %d char\n", num, ret);
-			dprintfbin(pdata, MAX(ret, num));
-			
-			printf("ret-> %d\n---------data start---------\n", ret);
-			for(index = 0; index < ret; index++)
-			{
-				printf("%c", pdata[index]);
-			}
-			printf("\n---------data end-----------\n");
-			mis_unpack((unsigned char *)pdata);
+				ret = CommRead(pdata, num);
+				//printf("finish Reading!\n");
+				//if(ret != num)
+					//printf("warning: we want read %d char, only read %d char\n", num, ret);
+				dprintfbin(pdata, ret);
+				
+				ret = mis_unpack((unsigned char *)pdata);
+				if(ret > 0) {
+						if(get_command_next( g_tag, next) > 0) {
+								len = mis_pack(next, pack_buf);
+								ret = CommWrite(pack_buf, len);
+								
+								dprintfbin(pack_buf, ret);
+					  }
+				}
 		}
 	}
-	if(0 == strcmp(argv[2], "write")){
-		char *type = argv[3];
-		char pack_buf[512];
-		int len, ret;
-		
-		len = mis_pack(type, pack_buf);
+	if(0 == strcmp(argv[2], "write")) {
+			char *type = argv[3];
+			int ret;
+			
+			len = mis_pack(type, pack_buf);
 
-		//while(1) {
 			ret = CommWrite(pack_buf, len);
-			printf("finish writing!\n");
 			if(ret != len)
 				printf("warning: we want write %d char, only write %d char\n", len, ret);
-			//dprintfbin(pdata, MAX(ret, num));
-			//sleep(1);
+			dprintfbin(pack_buf, ret);
 			usleep(1);
-		//}
 	}
 
 	if (0 == strcmp(argv[2], "clear"))
@@ -500,7 +500,6 @@ usage:
 		CommPurge(COMM_PURGE_RXCLEAR);
 	}
 
-	printf("***\n");
 	CommDestory();
 	return 0;
 }

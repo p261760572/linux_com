@@ -34,7 +34,7 @@ int get_field( char * field_name , char *packet_type, char * data)
 			break;
 	  }
 	}
-	if( i == fld_num ) return -1;
+	if( i == fld_num ) return 0;
 	return fld_data[i].len;
 }
 
@@ -47,14 +47,11 @@ int get_command_next( char *packet_type, char * next)
 				if( strcmp(packet_type,trans_set[i].type)==0)
 				{
 					strcpy(next,trans_set[i].Packet_Set[1].set);
-					break;
+					return 1;
 			  }
 		}
-		if( !trans_set[i].type[0] ) {
-			fprintf(stderr, "(at %s:%d)非法指令[%s]", __FILE__, __LINE__, packet_type);
-			return -1;
-		}
-		return 1;
+		
+		return 0;
 }
 
 int add_field(int data_len,const char *data,char *field_name,char *type)
@@ -81,7 +78,7 @@ int load_trans_field( char * filename )
 {
 	//打开配置文件
 	FILE *fp;
-	char buf[1024],*p,field_name[64],data[512],type[10], head[10];
+	char buf[1024],field_name[64],data[512],type[10], head[10];
 	fp=fopen(filename,"r");
 	if( fp == NULL ) return 0;
 	while(!feof(fp))
@@ -89,7 +86,7 @@ int load_trans_field( char * filename )
 			if(NULL==fgets(buf,sizeof(buf),fp)) break;
 			if( buf[strlen(buf)-1]==0x0D ||buf[strlen(buf)-1]==0x0A)
 				buf[strlen(buf)-1]=0x00;
-			sscanf(buf, "%[a-z]%[0-9].%[0-9]%*[ ]=%*[ ]%s", head, type, field_name, data);
+			sscanf(buf, "%[a-z]%[0-9].%[0-9]=%s", head, type, field_name, data);
 			if( strncmp(head,"field",5)!=0) continue;
 			rtrim(data);
 			add_field(strlen(data),data,field_name,type);
@@ -102,7 +99,7 @@ int load_trans_field( char * filename )
 int load_trans_set(char * filename )
 {
 	FILE *fp;
-	char buf[2048],*p, trans_type[10], type[3], head[20], set[512];
+	char buf[2048], trans_type[10], type[3], head[20], set[512];
 	int i=0;
 	fp=fopen(filename,"r");
 	if( fp == NULL ) return 0;
@@ -118,7 +115,7 @@ int load_trans_set(char * filename )
 			if(NULL==fgets(buf,sizeof(buf),fp)) break;
 			if( buf[strlen(buf)-1]==0x0D ||buf[strlen(buf)-1]==0x0A)
 				buf[strlen(buf)-1]=0x00;
-			sscanf(buf, "%[^.].%[a-z]%[0-9]%*[ ]=%*[ ]%s", head, trans_set[i].Packet_Set[0].trans_type, 
+			sscanf(buf, "%[^.].%[a-z]%[0-9]=%s", head, trans_set[i].Packet_Set[0].trans_type, 
 							trans_set[i].type, trans_set[i].Packet_Set[0].set);
 			
 			if( !head[0] || strcmp(head,"trans")!=0) continue;
@@ -130,7 +127,7 @@ int load_trans_set(char * filename )
 			if( buf[strlen(buf)-1]==0x0D ||buf[strlen(buf)-1]==0x0A)
 				buf[strlen(buf)-1]=0x00;
 				
-			sscanf(buf, "%[^.].%[a-z]%[0-9]%*s=%*s%s", head, trans_set[i].Packet_Set[1].trans_type, 
+			sscanf(buf, "%[^.].%[a-z]%[0-9]=%s", head, trans_set[i].Packet_Set[1].trans_type, 
 							trans_set[i].type, trans_set[i].Packet_Set[1].set);
 			if( !head[0] || strcmp(head,"trans")!=0)
 			{

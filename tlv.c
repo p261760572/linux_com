@@ -147,7 +147,7 @@ const tag_def_t *tag_array_get(const tag_array_t *arr, unsigned char *tag) {
 
 int tlv_parse(unsigned char *data, unsigned int data_len, tag_array_t *arr) {
     unsigned int offset = 0,  l, tag_construct;
-    unsigned char *v, *t, tmp_len[3];
+    unsigned char *v, t[TAG_LEN], tmp_len[3];
 
     while(offset < data_len) {
     		tag_construct = 0;
@@ -155,7 +155,7 @@ int tlv_parse(unsigned char *data, unsigned int data_len, tag_array_t *arr) {
         offset += TAG_LEN;
 
 				memcpy(tmp_len, data+offset, LEN_LEN);
-        l = atoi(tmp_len);
+        l = atoi((const char *)tmp_len);
         
         offset += LEN_LEN;
         v = data + offset;

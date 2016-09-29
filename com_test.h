@@ -15,5 +15,5 @@ int CommWrite(void *pdata, DWORD len);
 
 int CommPurge(DWORD dw_flags);
 
-
+int get_command_next( char *packet_type, char * next);
 #endif
