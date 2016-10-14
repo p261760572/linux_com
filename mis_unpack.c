@@ -8,7 +8,7 @@
 int mis_unpack(unsigned char *data)
 {
 		if(data[0] != 0x02) return -1;
-		unsigned int data_len = data[0]*256+data[1];
+		unsigned int data_len = data[1]*256+data[2];
 		
 		tag_array_t arr;
 		tag_array_init(&arr);

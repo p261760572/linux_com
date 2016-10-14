@@ -46,18 +46,19 @@ enum comm_parity_t
 #define COMM_PURGE_RXCLEAR			0x0008	
 
 #define dprintfbin(buf, size) 					\
-	do {											\
+	{											\
 		int i; 										\
-		for (i = 0; i < size - 1; i++){ 				\
-			if (0 == i % 16){ 						\
-				if (0 != i)							\
-					printf("\n");					\
-				printf("0x%04x: ", i); 			\
-			}										\
-			printf("%02x ", ((unsigned char*)buf)[i]);		\
-		}											\
-		printf("%02x\n", ((unsigned char*)buf)[i]); 			\
-	} while(0)
+		if(size > 0) {\
+			for (i = 0; i < (size); i++){ 				\
+				if (0 == i % 16){ 						\
+					if (0 != i)							\
+						printf("\n");					\
+					printf("0x%04x: ", i); 			\
+				}										\
+				printf("%02x ", buf[i]);		\
+			}											\
+		}\
+	} 
 
 #define MAX(a, b)		(a > b? a: b)
 
@@ -67,7 +68,7 @@ enum comm_parity_t
 static int fd_com = -1;
 char *DEV_COM = NULL;
 
-int mis_pack(char *packet_type, char *buf);
+int mis_pack(char *packet_type, unsigned char *buf);
 int mis_unpack(unsigned char *data);
 int load_trans_field( char * filename );
 int load_trans_set(char * filename );
@@ -85,7 +86,7 @@ int CommOpen(void)
 			return -1;
 		}
 	}
-	//LIBDVR_PRINT("CommOpen Successful\n");
+	LIBDVR_PRINT("CommOpen Successful\n");
 	return fd_com;
 }
 
@@ -358,7 +359,7 @@ int CommRead(void *pdata, DWORD nbytes)
 			return -1;
 		}		
 	}
-	printf("read: len=%d\ndata=%s\n", nbytes, (char *)pdata);
+	//printf("read: len=%d\ndata=%s\n", nbytes, (char *)pdata);
 	return read(fd_com, pdata, nbytes);
 }
 
@@ -375,7 +376,7 @@ int CommWrite(void *pdata, DWORD len)
 		}		
 	}
 	
-	printf("write:len=%d\ndata=%s\n", len, (char *)pdata);
+	printf("write:len=%d\n", len);
 	return write(fd_com, pdata, len);
 }
 
@@ -416,7 +417,8 @@ int CommPurge(DWORD dw_flags)
 
 int main(int argc, char *argv[])
 {
-	char pack_buf[512], next[3];
+	BYTE pack_buf[512];
+	char next[3];
 	int len;
 	printf("version: %s %s\n", __DATE__, __TIME__);
 	if(argc < 4) {
@@ -441,44 +443,56 @@ usage:
 	GetAttribute();
 
 	COMM_ATTR attr = {0 };
-	attr.baudrate = 9600;
+	attr.baudrate = 115200;
 	attr.databits = 8;			// 8位数据位
 	attr.parity = COMM_NOPARITY;		// 无奇偶效验	
 	attr.stopbits = COMM_ONESTOPBIT;	// 1位停止位
 	//attr.reserved = 0;
-	if(SetAttribute(&attr) !=0)
+	if(SetAttribute(&attr) !=0) {
 		printf("set com attr failed\n");
+		return -1;
+	}
 		
 	GetAttribute();
 	if(!load_trans_set("./mis_com.conf")) return -1;
 	if(!load_trans_field("./mis_com.conf")) return -1;
-	if(0 == strcmp(argv[2], "read")){
-		int num = atoi(argv[3]);
-		if(num <= 0 || num > 1000) {
+	
+	printf("start work!\nDEV=%s,F_DEV=%d\n", DEV_COM, fd_com);
+	int num = atoi(argv[3]);
+	if(num <= 0 || num > 1000) {
 			printf("read num must more than 0, less than 1000\n");
 			exit(-2);
-		}
+	}
 
-		char *pdata = malloc(num);
-		int ret;
-		while(1)
-		{
-				ret = CommRead(pdata, num);
-				//printf("finish Reading!\n");
-				//if(ret != num)
-					//printf("warning: we want read %d char, only read %d char\n", num, ret);
-				dprintfbin(pdata, ret);
-				
-				ret = mis_unpack((unsigned char *)pdata);
-				if(ret > 0) {
-						if(get_command_next( g_tag, next) > 0) {
-								len = mis_pack(next, pack_buf);
-								ret = CommWrite(pack_buf, len);
-								
-								dprintfbin(pack_buf, ret);
-					  }
-				}
-		}
+	unsigned char *pdata = malloc(num);
+	int ret, flag = 0, pack_len = 0, read_len = 0;
+	
+	if(0 == strcmp(argv[2], "read")) {
+			while(1)
+			{
+					ret = CommRead(pdata+read_len, num);
+					if(read_len > 2 && flag == 0) {
+							pack_len = pdata[1]*256+pdata[2]+13;
+							flag = 1;
+					}
+					read_len += ret;
+					
+					if(flag == 1 && read_len >= pack_len) {
+							printf("\nread finish[%d]!\n", pack_len);
+							for(ret = 0; ret < pack_len; ret++) printf("%02x ", pdata[ret]);
+							printf("\n\n");
+					//		dprintfbin(pdata, pack_len);
+							len = mis_pack("00", pack_buf);
+							ret = CommWrite(pack_buf, len);
+							
+							for(len = 0; len < ret; len++) printf("%02x ", pack_buf[len]);
+					//		dprintfbin(pack_buf, ret);
+							read_len = read_len - pack_len;
+							pdata = pdata+pack_len;
+							flag = 0;
+							pack_len = 0;
+					}
+			}
 	}
 	if(0 == strcmp(argv[2], "write")) {
 			char *type = argv[3];
@@ -489,8 +503,37 @@ usage:
 			ret = CommWrite(pack_buf, len);
 			if(ret != len)
 				printf("warning: we want write %d char, only write %d char\n", len, ret);
-			dprintfbin(pack_buf, ret);
+				
+			for(len = 0; len < ret; len++) printf("%02x ", pack_buf[len]);
+			printf("\n");
+			//dprintfbin(pack_buf, ret);
 			usleep(1);
+			while(1) {
+					ret = CommRead(pdata+read_len, num);
+					if(read_len > 2 && flag == 0) {
+							pack_len = pdata[1]*256+pdata[2]+13;
+							flag = 1;
+					}
+					read_len += ret;
+					
+					if(flag == 1 && read_len >= pack_len) {
+							printf("\nread finish[%d]!\n", pack_len);
+							for(ret = 0; ret < pack_len; ret++) printf("%02x ", pdata[ret]);
+							printf("\n");
+					//		dprintfbin(pdata, pack_len);
+							
+							if(get_command_next( g_tag, next) < 0) break;
+							ret = mis_unpack(pdata);
+							if(ret > 0) {
+									len = mis_pack(next, pack_buf);
+									ret = CommWrite(pack_buf, len);
+							}
+							read_len = read_len - pack_len;
+							pdata = pdata+pack_len;
+							flag = 0;
+							pack_len = 0;
+					}
+			}
 	}
 
 	if (0 == strcmp(argv[2], "clear"))
@@ -500,6 +543,7 @@ usage:
 		CommPurge(COMM_PURGE_RXCLEAR);
 	}
 
+  free(pdata);
 	CommDestory();
 	return 0;
 }
